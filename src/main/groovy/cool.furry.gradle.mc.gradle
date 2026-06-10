@@ -1,0 +1,52 @@
+import cool.furry.gradle.mc.tasks.Data
+import cool.furry.gradle.mc.tasks.Publish
+import cool.furry.gradle.mc.tasks.SignJar
+import cool.furry.gradle.mc.tasks.UpdateJson
+
+plugins {
+    id 'java-library'
+    id 'idea'
+}
+
+java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+
+tasks.named("jar", Jar) {
+    doFirst {
+        def jarDir = archiveFile.get().asFile.parentFile
+        jarDir.listFiles(new FilenameFilter() {
+            boolean accept(File dir, String name) {
+                return name.endsWith(".jar")
+            }
+        })?.each { file ->
+            getLogger().log(LogLevel.WARN, "Deleting old jar: ${file.name}")
+            file.delete()
+        }
+    }
+
+    finalizedBy(signJar)
+}
+
+tasks.register("signJar", SignJar) {
+    dependsOn(jar)
+    setGroup("build")
+}
+
+tasks.register("releaseJar") {
+    dependsOn(jar)
+    finalizedBy(updateJSON)
+    setGroup("publishing")
+}
+
+tasks.register("updateJSON", UpdateJson) {
+    setGroup("publishing")
+}
+
+tasks.register("data", Data) {
+    setGroup("build")
+}
+processResources.dependsOn(data)
+
+tasks.register("publish", Publish) {
+    setGroup("publishing")
+    dependsOn(releaseJar)
+}
